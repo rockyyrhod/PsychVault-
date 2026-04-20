@@ -33,8 +33,11 @@ export default function App() {
   const [methodology, setMethodology] = useState('');
   const [type, setType] = useState<'Theory' | 'Student Research'>('Student Research');
   
-  // Search & Data
+  // Search & Filter & Data
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'All' | 'Theory' | 'Student Research'>('All');
+  const [filterYear, setFilterYear] = useState<string>('All');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'az' | 'za'>('newest');
   const [loading, setLoading] = useState(false);
   const [repos, setRepos] = useState<ResearchRepo[]>([
     {
@@ -52,13 +55,27 @@ export default function App() {
     }
   ]);
 
+  const availableYears = useMemo(() => {
+    const years = [...new Set(repos.map(r => r.year.split('-')[0]))].sort((a, b) => Number(b) - Number(a));
+    return ['All', ...years];
+  }, [repos]);
+
   const filteredRepos = useMemo(() => {
-    return repos.filter(r => 
-      r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.leadAuthor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.keywords.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [searchQuery, repos]);
+    let result = repos.filter(r => {
+      const matchesSearch =
+        r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.leadAuthor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.keywords.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = filterType === 'All' || r.type === filterType;
+      const matchesYear = filterYear === 'All' || r.year.startsWith(filterYear);
+      return matchesSearch && matchesType && matchesYear;
+    });
+    if (sortBy === 'newest') result = result.sort((a, b) => b.year.localeCompare(a.year));
+    if (sortBy === 'oldest') result = result.sort((a, b) => a.year.localeCompare(b.year));
+    if (sortBy === 'az') result = result.sort((a, b) => a.title.localeCompare(b.title));
+    if (sortBy === 'za') result = result.sort((a, b) => b.title.localeCompare(a.title));
+    return result;
+  }, [searchQuery, filterType, filterYear, sortBy, repos]);
 
   const handlePublish = (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,7 +141,7 @@ export default function App() {
               </div>
             </div>
             <p className="text-slate-400 text-sm leading-relaxed">
-              PsychVault is an open-source digital repository dedicated to archiving psychological research, theories, and student studies made solely for <span className="text-white font-semibold">My Baby</span>.
+              PsychVault is an open-source digital repository dedicated to archiving psychological research, theories, and student studies from <span className="text-white font-semibold">PUP Biñan Campus</span>.
             </p>
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
@@ -160,7 +177,53 @@ export default function App() {
               <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by title, author, or keywords..." className="w-full p-6 pl-16 bg-white/5 border border-white/10 rounded-[2rem] outline-none focus:border-indigo-500 transition-all text-lg" />
               <span className="absolute left-7 top-6.5 text-xl opacity-30">🔍</span>
             </div>
+
+            {/* FILTER BAR */}
+            <div className="flex flex-wrap gap-3 items-center justify-between max-w-3xl mx-auto">
+              {/* Type Filter */}
+              <div className="flex gap-2">
+                {(['All', 'Student Research', 'Theory'] as const).map(t => (
+                  <button key={t} onClick={() => setFilterType(t)}
+                    className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${filterType === t ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/10 text-slate-400 hover:border-indigo-500/40 hover:text-white'}`}>
+                    {t === 'All' ? '⬡ All Types' : t === 'Student Research' ? '📄 Student' : '📚 Theory'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Year & Sort */}
+              <div className="flex gap-2">
+                <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}
+                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none hover:border-indigo-500/40 transition-all cursor-pointer">
+                  {availableYears.map(y => <option key={y} value={y}>{y === 'All' ? '📅 All Years' : y}</option>)}
+                </select>
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none hover:border-indigo-500/40 transition-all cursor-pointer">
+                  <option value="newest">↓ Newest</option>
+                  <option value="oldest">↑ Oldest</option>
+                  <option value="az">A → Z</option>
+                  <option value="za">Z → A</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Results Count */}
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 max-w-3xl mx-auto">
+              {filteredRepos.length} {filteredRepos.length === 1 ? 'entry' : 'entries'} found
+              {filterType !== 'All' && <span className="text-indigo-500"> • {filterType}</span>}
+              {filterYear !== 'All' && <span className="text-indigo-500"> • {filterYear}</span>}
+            </p>
             <div className="grid gap-6">
+              {filteredRepos.length === 0 && (
+                <div className="text-center py-20 space-y-4">
+                  <p className="text-5xl">🔬</p>
+                  <p className="text-white font-black text-xl uppercase tracking-tight">No Studies Found</p>
+                  <p className="text-slate-500 text-sm">Try adjusting your search or filters.</p>
+                  <button onClick={() => { setSearchQuery(''); setFilterType('All'); setFilterYear('All'); }}
+                    className="px-6 py-3 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/40 transition-all">
+                    Clear Filters
+                  </button>
+                </div>
+              )}
               {filteredRepos.map(r => (
                 <div key={r.id} className="bg-slate-900/40 p-10 rounded-[2.5rem] border border-white/5 hover:border-indigo-500/30 transition-all backdrop-blur-sm">
                   <div className="flex justify-between items-center mb-6 text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -284,7 +347,7 @@ export default function App() {
 
       <footer className="py-20 border-t border-white/5 text-center space-y-4 opacity-50">
         <p className="text-[10px] font-black uppercase tracking-[0.8em]">PsychVault Neural Registry • 2026</p>
-        <p className="text-[9px] font-bold italic uppercase">Polytechnic University of the Philippines - Biñan Campus • Computer Engineering Research Group</p>
+        <p className="text-[9px] font-bold italic uppercase">PUP Biñan Campus • Computer Engineering Research Group</p>
       </footer>
     </div>
   )
