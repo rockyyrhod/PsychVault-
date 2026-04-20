@@ -142,7 +142,7 @@ export default function App() {
               </div>
             </div>
             <p className="text-slate-400 text-sm leading-relaxed">
-              PsychVault is an open-source digital repository dedicated to archiving psychological research, theories, and student studies from <span className="text-white font-semibold">PUP Biñan Campus</span>.
+              PsychVault is an open-source digital repository dedicated to archiving psychological research, theories, and student studies solely made for <span className="text-white font-semibold">My Baby</span>.
             </p>
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
@@ -348,7 +348,7 @@ export default function App() {
 
       <footer className="py-20 border-t border-white/5 text-center space-y-4 opacity-50">
         <p className="text-[10px] font-black uppercase tracking-[0.8em]">PsychVault Neural Registry • 2026</p>
-        <p className="text-[9px] font-bold italic uppercase">PUP Biñan Campus • Computer Engineering Research Group</p>
+        <p className="text-[9px] font-bold italic uppercase">Polytechnic University of the Philippines - Biñan Campus • Association of Computer Engineering Students Research Group</p>
       </footer>
     </div>
   )
