@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+
 import logo from './assets/ACES LOGO.jpg'
 import bgImage from './assets/BACKGROUND.jpg'
 
@@ -14,7 +15,7 @@ interface ResearchRepo {
   year: string;
   institution: string;
   keywords: string;
-  pdfUrl?: string; // Simulated link
+  pdfUrl?: string; 
 }
 
 export default function App() {
