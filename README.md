@@ -3,7 +3,9 @@
 **PsychVault** is a modern, student-centric research repository designed for the **Psychology Students of PUP Biñan Campus** community. It allows researchers to explore psychological theories and publish their own studies in a secure, academic environment.
 
 ## 📸 App Preview
-![App Screenshot](./screenshots/overview.png) (./screenshots/Signup_Page.png) (./screenshots/Upload_Page.png)
+![App Screenshot](./screenshots/Overview.png) 
+![Signup Page](./screenshots/Signup_Page.png)
+![Upload Page](./screenshots/Upload_Page.png)
 
 ## ✨ Core Features
 * **Searchable Archive:** Instant filtering of research papers by title or author.
