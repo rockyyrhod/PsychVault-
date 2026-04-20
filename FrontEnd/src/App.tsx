@@ -44,7 +44,7 @@ export default function App() {
     {
       id: '1',
       leadAuthor: 'Kathleen Gayle Lecong',
-      coAuthors: 'Rhodcille Jhon M. Borja,',
+      coAuthors: 'Rhodcille Jhon M. Borja',
       title: 'THE ROLE OF INTERNSHIP PROGRAM ON WORKPLACE ADAPTABILITY OF NEWLY HIRED TEACHERS: A LITERATURE REVIEW',
       abstract: 'An analysis of how structured internship experiences influence the professional adjustment and pedagogical flexibility of first-year educators.',
       methodology: 'Qualitative Literature Review: Systematic analysis of peer-reviewed journals (2015-2025).',
@@ -154,7 +154,7 @@ export default function App() {
                 <p className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Biñan Campus</p>
               </div>
             </div>
-            <p className="text-[10px] text-slate-600 uppercase tracking-widest text-center">Computer Engineering Research Group • 2026</p>
+            <p className="text-[10px] text-slate-600 uppercase tracking-widest text-center">ACES Research Group • 2026</p>
             <button onClick={() => setShowAbout(false)} className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest text-xs hover:bg-indigo-500 transition-all">Close</button>
           </div>
         </div>
@@ -348,7 +348,7 @@ export default function App() {
 
       <footer className="py-20 border-t border-white/5 text-center space-y-4 opacity-50">
         <p className="text-[10px] font-black uppercase tracking-[0.8em]">PsychVault Neural Registry • 2026</p>
-        <p className="text-[9px] font-bold italic uppercase">Polytechnic University of the Philippines - Biñan Campus • Association of Computer Engineering Students Research Group</p>
+        <p className="text-[9px] font-bold italic uppercase">Polytechnic University of the Philippines - Biñan Campus • ACES Research Group</p>
       </footer>
     </div>
   )
