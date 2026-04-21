@@ -62,6 +62,8 @@ const INITIAL_RESEARCHERS: Researcher[] = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'explore' | 'contribute' | 'login' | 'signup' | 'profile' | 'admin'>('explore');
+  // Controls whether to show the hero/landing section or jump straight to the archive search
+  const [showArchive, setShowArchive] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState('');
@@ -124,6 +126,18 @@ export default function App() {
   const navigate = (tab: typeof activeTab) => {
     setActiveTab(tab);
     setMobileMenuOpen(false);
+    // Reset archive view when navigating away from explore
+    if (tab !== 'explore') setShowArchive(false);
+  };
+
+  // Called by "Explore Full Archive" button on the hero — shows archive section directly
+  const openArchive = () => {
+    setShowArchive(true);
+    setActiveTab('explore');
+    // Small timeout to let React render before scrolling
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 50);
   };
 
   const userStudies = useMemo(() => repos.filter(r => r.leadAuthor.toLowerCase() === currentUser.toLowerCase()), [repos, currentUser]);
@@ -159,6 +173,7 @@ export default function App() {
   const handleLogout = () => {
     setIsLoggedIn(false); setIsAdmin(false); setCurrentUser('');
     setUserProfile({ fullName: '', studentId: '', course: '', gradeLevel: '', university: '', profilePic: null });
+    setShowArchive(false);
     navigate('explore');
   };
 
@@ -195,489 +210,545 @@ export default function App() {
   const adminInputCls = "w-full p-3 sm:p-4 bg-slate-950/50 border border-white/10 rounded-2xl outline-none focus:border-amber-500 text-sm text-slate-200 placeholder:text-slate-600";
   const labelCls = "text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1";
 
+  // ── BACKGROUND: use a wrapper div with absolute positioning so it works on all devices
+  // backgroundAttachment: 'fixed' is broken on iOS Safari and many Android browsers.
+  // Instead we use a fixed-position pseudo-layer via an absolutely positioned div.
   return (
-    <div className="min-h-screen bg-slate-950 font-sans text-slate-200"
-      style={{ backgroundImage: `linear-gradient(rgba(15,23,42,0.93),rgba(15,23,42,0.98)),url(${bgImage})`, backgroundSize: 'cover', backgroundAttachment: 'fixed' }}>
+    <div className="min-h-screen bg-slate-950 font-sans text-slate-200 relative">
+      {/* Background layer — fixed position works cross-device unlike backgroundAttachment:fixed */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 0,
+          backgroundImage: `url(${bgImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      />
+      {/* Overlay */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1,
+          background: 'linear-gradient(rgba(15,23,42,0.93), rgba(15,23,42,0.98))',
+        }}
+      />
 
-      {/* ── NAVBAR ── */}
-      <nav className="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-white/5 px-4 sm:px-8 py-3 sm:py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          {/* Logo */}
-          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer" onClick={() => setShowAbout(true)}>
-            <img src={logo} alt="Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg shadow-lg" />
-            <span className="text-base sm:text-xl font-black tracking-tighter text-white uppercase">Psych<span className="text-indigo-500">Vault</span></span>
-          </div>
+      {/* All content sits above the background layers */}
+      <div className="relative" style={{ zIndex: 2 }}>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex gap-8 text-[10px] font-black uppercase tracking-[0.25em] items-center">
-            <button onClick={() => navigate('explore')} className={`transition-colors ${activeTab === 'explore' ? 'text-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}>Archives</button>
-            {isLoggedIn && !isAdmin && <button onClick={() => navigate('contribute')} className={`transition-colors ${activeTab === 'contribute' ? 'text-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}>Contribute</button>}
-            {isAdmin && <button onClick={() => navigate('admin')} className={`transition-colors ${activeTab === 'admin' ? 'text-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}>Admin Panel</button>}
-            {!isLoggedIn ? (
-              <div className="flex items-center gap-3">
-                <button onClick={() => navigate('login')} className={`transition-colors ${activeTab === 'login' ? 'text-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}>Log In</button>
-                <button onClick={() => navigate('signup')} className="bg-indigo-600 px-4 py-2 rounded-xl text-white hover:bg-indigo-500 transition-all shadow-lg text-[10px]">Sign Up</button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-4">
-                {!isAdmin && (
-                  <button onClick={() => navigate('profile')} className={`flex items-center gap-2 transition-colors ${activeTab === 'profile' ? 'text-indigo-400' : 'text-slate-300 hover:text-white'}`}>
-                    <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-black overflow-hidden border border-white/10">
-                      {userProfile.profilePic ? <img src={userProfile.profilePic} alt="PFP" className="w-full h-full object-cover" /> : currentUser.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <span className="text-[10px]">{currentUser}</span>
-                  </button>
-                )}
-                {isAdmin && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-amber-600 flex items-center justify-center text-[10px] font-black border border-white/10">⚙</div>
-                    <span className="text-amber-400 font-black text-[10px]">Administrator</span>
-                  </div>
-                )}
-                <button onClick={handleLogout} className="text-red-400 font-bold text-[10px]">Logout</button>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile Hamburger */}
-          <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            <span className={`block w-5 h-0.5 bg-slate-400 transition-all ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
-            <span className={`block w-5 h-0.5 bg-slate-400 transition-all ${mobileMenuOpen ? 'opacity-0' : ''}`}></span>
-            <span className={`block w-5 h-0.5 bg-slate-400 transition-all ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
-          </button>
-        </div>
-
-        {/* Mobile Dropdown Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-white/5 mt-3 pt-3 pb-2 px-4 space-y-1">
-            <button onClick={() => navigate('explore')} className={`w-full text-left py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors ${activeTab === 'explore' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400'}`}>📚 Archives</button>
-            {isLoggedIn && !isAdmin && <button onClick={() => navigate('contribute')} className={`w-full text-left py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors ${activeTab === 'contribute' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400'}`}>✏️ Contribute</button>}
-            {isAdmin && <button onClick={() => navigate('admin')} className={`w-full text-left py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors ${activeTab === 'admin' ? 'text-amber-400 bg-amber-500/10' : 'text-slate-400'}`}>⚙️ Admin Panel</button>}
-            {isLoggedIn && !isAdmin && <button onClick={() => navigate('profile')} className={`w-full text-left py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors ${activeTab === 'profile' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400'}`}>👤 My Profile</button>}
-            {!isLoggedIn ? (
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => navigate('login')} className="flex-1 py-2.5 text-center text-[11px] font-black uppercase tracking-widest text-slate-400 border border-white/10 rounded-xl hover:border-indigo-500/40 transition-colors">Log In</button>
-                <button onClick={() => navigate('signup')} className="flex-1 py-2.5 text-center text-[11px] font-black uppercase tracking-widest bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 transition-colors">Sign Up</button>
-              </div>
-            ) : (
-              <button onClick={handleLogout} className="w-full text-left py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-red-400">🚪 Logout</button>
-            )}
-          </div>
-        )}
-      </nav>
-
-      {/* ABOUT MODAL */}
-      {showAbout && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4" onClick={() => setShowAbout(false)}>
-          <div className="bg-slate-900 border border-white/10 rounded-3xl sm:rounded-[3rem] p-6 sm:p-12 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-4">
-              <img src={logo} alt="Logo" className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl shadow-lg" />
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter">Psych<span className="text-indigo-500">Vault</span></h2>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Neural Research Registry</p>
-              </div>
+        {/* ── NAVBAR ── */}
+        <nav className="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-white/5 px-4 sm:px-8 py-3 sm:py-4">
+          <div className="max-w-7xl mx-auto flex justify-between items-center">
+            {/* Logo */}
+            <div className="flex items-center gap-2 sm:gap-3 cursor-pointer" onClick={() => setShowAbout(true)}>
+              <img src={logo} alt="Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg shadow-lg" />
+              <span className="text-base sm:text-xl font-black tracking-tighter text-white uppercase">Psych<span className="text-indigo-500">Vault</span></span>
             </div>
-            <p className="text-slate-400 text-sm leading-relaxed">PsychVault is an open-source digital repository dedicated to archiving psychological research, theories, and student studies from <span className="text-white font-semibold">PUP Biñan Campus</span>.</p>
-            <div className="grid grid-cols-2 gap-3 text-center">
-              <div className="bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/5"><p className="text-xl sm:text-2xl font-black text-indigo-400">Open</p><p className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Access</p></div>
-              <div className="bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/5"><p className="text-xl sm:text-2xl font-black text-indigo-400">PUP</p><p className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Biñan Campus</p></div>
-            </div>
-            <button onClick={() => setShowAbout(false)} className="w-full py-3 sm:py-4 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest text-xs hover:bg-indigo-500 transition-all">Close</button>
-          </div>
-        </div>
-      )}
 
-      <main className="max-w-6xl mx-auto px-3 sm:px-6 py-6 sm:py-12">
-
-        {/* ── HERO + RECENT ── */}
-        {activeTab === 'explore' && searchQuery === '' && (
-          <section className="space-y-10 sm:space-y-16 py-4 sm:py-6 animate-in fade-in duration-700">
-            <div className="text-center space-y-4 sm:space-y-6 px-2">
-              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">
-                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse"></span>
-                {repos.length} Studies Archived
-              </div>
-              <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white tracking-tight leading-none uppercase">
-                Mapping the <span className="text-indigo-500">Human Mind.</span>
-              </h1>
-              <p className="max-w-2xl mx-auto text-slate-400 text-sm sm:text-lg leading-relaxed">A collective open-source repository for psychological research and pioneers.</p>
-              <button onClick={() => document.getElementById('search-archive')?.scrollIntoView({ behavior: 'smooth' })} className="px-6 sm:px-8 py-3 sm:py-4 bg-indigo-600 rounded-full font-bold text-xs sm:text-sm uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20">
-                Explore Full Archive
+            {/* Desktop Nav */}
+            <div className="hidden md:flex gap-8 text-[10px] font-black uppercase tracking-[0.25em] items-center">
+              <button
+                onClick={() => { setShowArchive(false); navigate('explore'); }}
+                className={`transition-colors ${activeTab === 'explore' ? 'text-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Archives
               </button>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-xl mx-auto">
-              {[
-                { label: 'Total Entries', value: repos.length },
-                { label: 'Student Research', value: repos.filter(r => r.type === 'Student Research').length },
-                { label: 'Classic Theories', value: repos.filter(r => r.type === 'Theory').length },
-              ].map(s => (
-                <div key={s.label} className="bg-white/5 border border-white/5 rounded-2xl sm:rounded-3xl p-3 sm:p-6 text-center">
-                  <p className="text-2xl sm:text-3xl font-black text-indigo-400">{s.value}</p>
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mt-1 leading-tight">{s.label}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Recently Added */}
-            <div className="space-y-4 sm:space-y-5">
-              <div className="flex items-center justify-between">
+              {isLoggedIn && !isAdmin && <button onClick={() => navigate('contribute')} className={`transition-colors ${activeTab === 'contribute' ? 'text-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}>Contribute</button>}
+              {isAdmin && <button onClick={() => navigate('admin')} className={`transition-colors ${activeTab === 'admin' ? 'text-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}>Admin Panel</button>}
+              {!isLoggedIn ? (
                 <div className="flex items-center gap-3">
-                  <span className="w-1 h-5 sm:h-6 bg-indigo-500 rounded-full"></span>
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400">Recently Added</h2>
+                  <button onClick={() => navigate('login')} className={`transition-colors ${activeTab === 'login' ? 'text-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}>Log In</button>
+                  <button onClick={() => navigate('signup')} className="bg-indigo-600 px-4 py-2 rounded-xl text-white hover:bg-indigo-500 transition-all shadow-lg text-[10px]">Sign Up</button>
                 </div>
-                <button onClick={() => document.getElementById('search-archive')?.scrollIntoView({ behavior: 'smooth' })} className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-400 transition-colors">View All →</button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {recentRepos.map(r => (
-                  <div key={r.id} className="group bg-slate-900/50 border border-white/5 hover:border-indigo-500/30 rounded-2xl sm:rounded-[2rem] p-4 sm:p-7 transition-all cursor-pointer active:scale-[0.98]"
-                    onClick={() => document.getElementById('search-archive')?.scrollIntoView({ behavior: 'smooth' })}>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 sm:px-3 py-1 rounded-full ${r.type === 'Theory' ? 'bg-purple-500/10 text-purple-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                        {r.type === 'Theory' ? '📚 Theory' : '📄 Student'}
-                      </span>
-                      <span className="text-[9px] text-slate-600 font-mono">{r.year}</span>
+              ) : (
+                <div className="flex items-center gap-4">
+                  {!isAdmin && (
+                    <button onClick={() => navigate('profile')} className={`flex items-center gap-2 transition-colors ${activeTab === 'profile' ? 'text-indigo-400' : 'text-slate-300 hover:text-white'}`}>
+                      <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-black overflow-hidden border border-white/10">
+                        {userProfile.profilePic ? <img src={userProfile.profilePic} alt="PFP" className="w-full h-full object-cover" /> : currentUser.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <span className="text-[10px]">{currentUser}</span>
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-amber-600 flex items-center justify-center text-[10px] font-black border border-white/10">⚙</div>
+                      <span className="text-amber-400 font-black text-[10px]">Administrator</span>
                     </div>
-                    <h3 className="text-xs sm:text-sm font-bold text-white group-hover:text-indigo-300 transition-colors leading-snug mb-2 line-clamp-2">{r.title}</h3>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black mb-1">{r.leadAuthor}</p>
-                    <p className="text-[10px] text-slate-600 italic line-clamp-2">{r.abstract}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ── ARCHIVE ── */}
-        {activeTab === 'explore' && (
-          <div id="search-archive" className="space-y-5 sm:space-y-8 pt-4">
-            {/* Search */}
-            <div className="relative max-w-3xl mx-auto">
-              <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search by title, author, or keywords..."
-                className="w-full p-4 sm:p-6 pl-12 sm:pl-16 bg-white/5 border border-white/10 rounded-2xl sm:rounded-[2rem] outline-none focus:border-indigo-500 transition-all text-sm sm:text-lg" />
-              <span className="absolute left-4 sm:left-7 top-4 sm:top-6 text-lg sm:text-xl opacity-30">🔍</span>
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 max-w-3xl mx-auto">
-              {/* Type Pills */}
-              <div className="flex gap-2 flex-wrap">
-                {(['All', 'Student Research', 'Theory'] as const).map(t => (
-                  <button key={t} onClick={() => setFilterType(t)}
-                    className={`px-3 sm:px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${filterType === t ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/10 text-slate-400 hover:border-indigo-500/40'}`}>
-                    {t === 'All' ? '⬡ All' : t === 'Student Research' ? '📄 Student' : '📚 Theory'}
-                  </button>
-                ))}
-              </div>
-              {/* Dropdowns */}
-              <div className="flex gap-2 sm:ml-auto">
-                <select value={filterYear} onChange={e => setFilterYear(e.target.value)}
-                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none cursor-pointer">
-                  {availableYears.map(y => <option key={y} value={y}>{y === 'All' ? '📅 All Years' : y}</option>)}
-                </select>
-                <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
-                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none cursor-pointer">
-                  <option value="newest">↓ Newest</option>
-                  <option value="oldest">↑ Oldest</option>
-                  <option value="az">A → Z</option>
-                  <option value="za">Z → A</option>
-                </select>
-              </div>
-            </div>
-
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 max-w-3xl mx-auto">
-              {filteredRepos.length} {filteredRepos.length === 1 ? 'entry' : 'entries'} found
-              {filterType !== 'All' && <span className="text-indigo-500"> • {filterType}</span>}
-              {filterYear !== 'All' && <span className="text-indigo-500"> • {filterYear}</span>}
-            </p>
-
-            <div className="grid gap-4 sm:gap-6">
-              {filteredRepos.map(r => (
-                <div key={r.id} className="bg-slate-900/40 p-5 sm:p-10 rounded-2xl sm:rounded-[2.5rem] border border-white/5 hover:border-indigo-500/30 transition-all backdrop-blur-sm">
-                  <div className="flex flex-wrap justify-between items-center mb-4 sm:mb-6 gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                    <span className={`px-3 py-1 rounded-full ${r.type === 'Theory' ? 'bg-purple-500/10 text-purple-400' : 'bg-indigo-500/10 text-indigo-400'}`}>{r.type}</span>
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                      <span className="text-slate-600">{r.category}</span>
-                      <span>Published: {r.year}</span>
-                    </div>
-                  </div>
-                  <h3 className="text-xl sm:text-3xl font-serif italic text-white mb-3 sm:mb-4 leading-tight">{r.title}</h3>
-                  <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 leading-relaxed">
-                    Principal Author: <span className="text-slate-200">{r.leadAuthor}</span>
-                    <span className="block sm:inline sm:ml-0"> • Co-Authors: <span className="text-slate-400 font-medium uppercase italic">{r.coAuthors}</span></span>
-                  </p>
-                  <p className="text-[10px] text-slate-600 mb-1">🏛 {r.institution}</p>
-                  <p className="text-xs sm:text-sm text-slate-500 mb-4 sm:mb-6 italic">🔑 {r.keywords}</p>
-                  <div className="space-y-3 sm:space-y-4 border-t border-white/5 pt-4 sm:pt-6">
-                    <p className="text-xs sm:text-sm text-slate-400"><strong className="text-indigo-400 uppercase text-[10px] tracking-widest block mb-1">Abstract</strong>{r.abstract}</p>
-                    <p className="text-xs sm:text-sm text-slate-500"><strong className="text-slate-600 uppercase text-[10px] tracking-widest block mb-1">Methodology</strong>{r.methodology}</p>
-                    <div className="flex flex-wrap gap-3 pt-1">
-                      <a href={r.pdfUrl} target="_blank" rel="noreferrer" className="text-indigo-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-1 hover:text-white transition-colors">👁️ View Online</a>
-                      <a href={r.pdfUrl} download className="text-indigo-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-1 hover:text-white transition-colors">📥 Download PDF</a>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {filteredRepos.length === 0 && (
-                <div className="bg-slate-900/40 p-12 sm:p-20 rounded-3xl sm:rounded-[3rem] border border-dashed border-white/10 text-center space-y-4">
-                  <p className="text-4xl sm:text-5xl">🔬</p>
-                  <p className="text-white font-black text-lg sm:text-xl uppercase tracking-tight">No Studies Found</p>
-                  <p className="text-slate-500 text-sm">Try adjusting your search or filters.</p>
-                  <button onClick={() => { setSearchQuery(''); setFilterType('All'); setFilterYear('All'); }} className="px-6 py-3 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/40 transition-all">Clear Filters</button>
+                  )}
+                  <button onClick={handleLogout} className="text-red-400 font-bold text-[10px]">Logout</button>
                 </div>
               )}
             </div>
+
+            {/* Mobile Hamburger */}
+            <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              <span className={`block w-5 h-0.5 bg-slate-400 transition-all duration-200 ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
+              <span className={`block w-5 h-0.5 bg-slate-400 transition-all duration-200 ${mobileMenuOpen ? 'opacity-0' : ''}`}></span>
+              <span className={`block w-5 h-0.5 bg-slate-400 transition-all duration-200 ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
+            </button>
+          </div>
+
+          {/* Mobile Dropdown Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-white/5 mt-3 pt-3 pb-2 px-4 space-y-1">
+              <button
+                onClick={() => { setShowArchive(false); navigate('explore'); }}
+                className={`w-full text-left py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors ${activeTab === 'explore' && !showArchive ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400'}`}
+              >
+                📚 Archives
+              </button>
+              {isLoggedIn && !isAdmin && <button onClick={() => navigate('contribute')} className={`w-full text-left py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors ${activeTab === 'contribute' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400'}`}>✏️ Contribute</button>}
+              {isAdmin && <button onClick={() => navigate('admin')} className={`w-full text-left py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors ${activeTab === 'admin' ? 'text-amber-400 bg-amber-500/10' : 'text-slate-400'}`}>⚙️ Admin Panel</button>}
+              {isLoggedIn && !isAdmin && <button onClick={() => navigate('profile')} className={`w-full text-left py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors ${activeTab === 'profile' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400'}`}>👤 My Profile</button>}
+              {!isLoggedIn ? (
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => navigate('login')} className="flex-1 py-2.5 text-center text-[11px] font-black uppercase tracking-widest text-slate-400 border border-white/10 rounded-xl hover:border-indigo-500/40 transition-colors">Log In</button>
+                  <button onClick={() => navigate('signup')} className="flex-1 py-2.5 text-center text-[11px] font-black uppercase tracking-widest bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 transition-colors">Sign Up</button>
+                </div>
+              ) : (
+                <button onClick={handleLogout} className="w-full text-left py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-red-400">🚪 Logout</button>
+              )}
+            </div>
+          )}
+        </nav>
+
+        {/* ABOUT MODAL */}
+        {showAbout && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4" onClick={() => setShowAbout(false)}>
+            <div className="bg-slate-900 border border-white/10 rounded-3xl sm:rounded-[3rem] p-6 sm:p-12 max-w-lg w-full shadow-2xl space-y-5" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-4">
+                <img src={logo} alt="Logo" className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl shadow-lg" />
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter">Psych<span className="text-indigo-500">Vault</span></h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Neural Research Registry</p>
+                </div>
+              </div>
+              <p className="text-slate-400 text-sm leading-relaxed">PsychVault is an open-source digital repository dedicated to archiving psychological research, theories, and student studies from <span className="text-white font-semibold">PUP Biñan Campus</span>.</p>
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div className="bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/5"><p className="text-xl sm:text-2xl font-black text-indigo-400">Open</p><p className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Access</p></div>
+                <div className="bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/5"><p className="text-xl sm:text-2xl font-black text-indigo-400">PUP</p><p className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Biñan Campus</p></div>
+              </div>
+              <button onClick={() => setShowAbout(false)} className="w-full py-3 sm:py-4 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest text-xs hover:bg-indigo-500 transition-all">Close</button>
+            </div>
           </div>
         )}
 
-        {/* ── PROFILE ── */}
-        {activeTab === 'profile' && isLoggedIn && !isAdmin && (
-          <div className="max-w-5xl mx-auto space-y-6 sm:space-y-10 animate-in fade-in">
-            <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-[3rem] p-6 sm:p-12 backdrop-blur-xl flex flex-col items-center sm:flex-row sm:items-start gap-6 sm:gap-10">
-              <div className="relative group shrink-0">
-                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl sm:rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl sm:text-4xl font-black shadow-2xl overflow-hidden border-2 border-white/10">
-                  {userProfile.profilePic ? <img src={userProfile.profilePic} alt="PFP" className="w-full h-full object-cover" /> : currentUser.split(' ').map(n => n[0]).join('')}
+        <main className="max-w-6xl mx-auto px-3 sm:px-6 py-6 sm:py-12">
+
+          {/* ── HERO LANDING — shown only when on explore tab and showArchive is false ── */}
+          {activeTab === 'explore' && !showArchive && (
+            <section className="space-y-10 sm:space-y-16 py-4 sm:py-6">
+              <div className="text-center space-y-4 sm:space-y-6 px-2">
+                <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">
+                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse"></span>
+                  {repos.length} Studies Archived
                 </div>
-                <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl sm:rounded-[2.5rem] cursor-pointer text-[10px] font-black uppercase tracking-widest text-white">
-                  Change <input type="file" className="hidden" accept="image/*" onChange={handleProfilePicChange} />
-                </label>
+                <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white tracking-tight leading-none uppercase">
+                  Mapping the <span className="text-indigo-500">Human Mind.</span>
+                </h1>
+                <p className="max-w-2xl mx-auto text-slate-400 text-sm sm:text-lg leading-relaxed">A collective open-source repository for psychological research and pioneers.</p>
+                {/* ── FIX: button now calls openArchive() which sets showArchive=true ── */}
+                <button
+                  onClick={openArchive}
+                  className="px-6 sm:px-8 py-3 sm:py-4 bg-indigo-600 rounded-full font-bold text-xs sm:text-sm uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20 active:scale-95"
+                >
+                  Explore Full Archive
+                </button>
               </div>
-              <div className="text-center sm:text-left space-y-2 sm:space-y-3">
-                <h2 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">{userProfile.fullName}</h2>
-                <p className="text-indigo-400 text-xs font-black uppercase tracking-[0.3em]">Verified Researcher • {userProfile.university}</p>
-                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{userProfile.course} • {userProfile.gradeLevel}</p>
-                <p className="text-slate-600 text-[9px] font-mono">ID: {userProfile.studentId}</p>
-                <div className="px-5 py-3 bg-white/5 rounded-2xl border border-white/5 inline-block text-center mt-3">
-                  <p className="text-2xl font-bold text-white">{userStudies.length}</p>
-                  <p className="text-[8px] uppercase tracking-widest text-slate-500">Publications</p>
-                </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-xl mx-auto">
+                {[
+                  { label: 'Total Entries', value: repos.length },
+                  { label: 'Student Research', value: repos.filter(r => r.type === 'Student Research').length },
+                  { label: 'Classic Theories', value: repos.filter(r => r.type === 'Theory').length },
+                ].map(s => (
+                  <div key={s.label} className="bg-white/5 border border-white/5 rounded-2xl sm:rounded-3xl p-3 sm:p-6 text-center">
+                    <p className="text-2xl sm:text-3xl font-black text-indigo-400">{s.value}</p>
+                    <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mt-1 leading-tight">{s.label}</p>
+                  </div>
+                ))}
               </div>
-            </div>
-            <div className="space-y-4 sm:space-y-6">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-500 ml-2 sm:ml-6">My Published Repositories</h3>
-              {userStudies.length === 0 ? (
-                <div className="bg-slate-900/40 p-12 sm:p-20 rounded-2xl sm:rounded-[3rem] border border-dashed border-white/10 text-center">
-                  <p className="text-slate-500 italic text-sm mb-4">No personal research cataloged yet.</p>
-                  <button onClick={() => navigate('contribute')} className="text-indigo-500 font-black uppercase text-[10px] tracking-widest">Start First Submission →</button>
+
+              {/* Recently Added */}
+              <div className="space-y-4 sm:space-y-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="w-1 h-5 sm:h-6 bg-indigo-500 rounded-full"></span>
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400">Recently Added</h2>
+                  </div>
+                  <button onClick={openArchive} className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-400 transition-colors">View All →</button>
                 </div>
-              ) : (
-                <div className="grid gap-3 sm:gap-4">
-                  {userStudies.map(r => (
-                    <div key={r.id} className="group bg-slate-900/60 p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/5 hover:border-indigo-500/40 transition-all flex justify-between items-start sm:items-center gap-4">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1">{r.type}</p>
-                        <h4 className="text-base sm:text-xl font-bold text-white group-hover:text-indigo-300 transition-colors leading-tight">{r.title}</h4>
-                        <p className="text-xs text-slate-500 mt-1">Cataloged on {r.year}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  {recentRepos.map(r => (
+                    <div key={r.id} className="group bg-slate-900/50 border border-white/5 hover:border-indigo-500/30 rounded-2xl sm:rounded-[2rem] p-4 sm:p-7 transition-all cursor-pointer active:scale-[0.98]"
+                      onClick={openArchive}>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 sm:px-3 py-1 rounded-full ${r.type === 'Theory' ? 'bg-purple-500/10 text-purple-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
+                          {r.type === 'Theory' ? '📚 Theory' : '📄 Student'}
+                        </span>
+                        <span className="text-[9px] text-slate-600 font-mono">{r.year}</span>
                       </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button className="p-2 sm:p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-slate-400 hover:text-white text-xs">Edit</button>
-                        <button onClick={() => setRepos(repos.filter(repo => repo.id !== r.id))} className="p-2 sm:p-3 bg-white/5 rounded-xl hover:bg-red-500/20 transition-colors text-slate-400 hover:text-red-400 text-xs">Delete</button>
-                      </div>
+                      <h3 className="text-xs sm:text-sm font-bold text-white group-hover:text-indigo-300 transition-colors leading-snug mb-2 line-clamp-2">{r.title}</h3>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black mb-1">{r.leadAuthor}</p>
+                      <p className="text-[10px] text-slate-600 italic line-clamp-2">{r.abstract}</p>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── CONTRIBUTE ── */}
-        {activeTab === 'contribute' && isLoggedIn && !isAdmin && (
-          <div className="max-w-4xl mx-auto animate-in slide-in-from-right-12">
-            <div className="bg-white/5 p-5 sm:p-12 rounded-2xl sm:rounded-[3.5rem] border border-white/10 backdrop-blur-xl shadow-2xl">
-              <header className="mb-6 sm:mb-10">
-                <h2 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">Upload Publication</h2>
-                <p className="text-indigo-500 text-[10px] font-black uppercase tracking-[0.4em] mt-2">New Repository Entry</p>
-              </header>
-              <form onSubmit={handlePublish} className="space-y-4 sm:space-y-6">
-                <div className="space-y-2"><label className={labelCls}>Full Title of the Research</label><input required type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Enter full research title..." className={inputCls} /></div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="space-y-2"><label className={labelCls}>Co-Authors</label><input type="text" value={coAuthors} onChange={e => setCoAuthors(e.target.value)} placeholder="Separate with commas" className={inputCls} /></div>
-                  <div className="space-y-2"><label className={labelCls}>Date Published</label><input type="date" value={publishDate} onChange={e => setPublishDate(e.target.value)} className={inputCls} /></div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="space-y-2"><label className={labelCls}>Keywords</label><input type="text" value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="e.g. Psychology, IoT, Behavior" className={inputCls} /></div>
-                  <div className="space-y-2"><label className={labelCls}>Archive Classification</label>
-                    <select value={type} onChange={e => setType(e.target.value as any)} className={inputCls}>
-                      <option value="Student Research">Student Research Paper</option>
-                      <option value="Theory">Classical Theory Framework</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-2"><label className={labelCls}>Abstract</label><textarea required rows={4} value={abstract} onChange={e => setAbstract(e.target.value)} placeholder="Provide a brief summary of the study..." className={`${inputCls} resize-none`} /></div>
-                <div className="space-y-2"><label className={labelCls}>Methodology</label><input required type="text" value={methodology} onChange={e => setMethodology(e.target.value)} placeholder="e.g. Case Study, Quantitative Survey..." className={inputCls} /></div>
-                <div className="p-4 sm:p-6 border border-dashed border-indigo-500/30 rounded-2xl sm:rounded-3xl bg-indigo-600/5 space-y-3 text-center">
-                  <label className="block text-[10px] font-black uppercase text-indigo-400 tracking-widest">Full Study Document (PDF)</label>
-                  <input required type="file" accept=".pdf" className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer" />
-                  <p className="text-[9px] text-slate-500">Maximum file size: 10MB</p>
-                </div>
-                <button className="w-full py-4 sm:py-6 bg-white text-slate-950 font-black rounded-2xl sm:rounded-3xl uppercase tracking-widest text-xs hover:bg-indigo-400 hover:text-white transition-all shadow-xl">
-                  {loading ? "Cataloging Entry..." : "Submit for Review"}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* ── ADMIN PANEL ── */}
-        {activeTab === 'admin' && isAdmin && (
-          <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 animate-in fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">Admin <span className="text-amber-400">Panel</span></h2>
-                <p className="text-amber-500/60 text-[10px] font-black uppercase tracking-[0.4em] mt-1">Full System Access</p>
               </div>
-              <div className="flex gap-2 sm:gap-3 flex-wrap">
-                <span className="px-3 sm:px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-black uppercase tracking-widest text-amber-400">{repos.length} Repos</span>
-                <span className="px-3 sm:px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-black uppercase tracking-widest text-amber-400">{researchers.length} Researchers</span>
+            </section>
+          )}
+
+          {/* ── ARCHIVE SEARCH — shown when showArchive=true OR when user types in search ── */}
+          {activeTab === 'explore' && showArchive && (
+            <div className="space-y-5 sm:space-y-8 pt-2">
+              {/* Back to home button */}
+              <button
+                onClick={() => { setShowArchive(false); setSearchQuery(''); setFilterType('All'); setFilterYear('All'); }}
+                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-400 transition-colors mb-2"
+              >
+                ← Back to Home
+              </button>
+
+              {/* Search */}
+              <div className="relative max-w-3xl mx-auto">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search by title, author, or keywords..."
+                  className="w-full p-4 sm:p-5 pl-12 sm:pl-14 bg-white/5 border border-white/10 rounded-2xl sm:rounded-[2rem] outline-none focus:border-indigo-500 transition-all text-sm sm:text-base"
+                  autoFocus
+                />
+                <span className="absolute left-4 sm:left-5 top-4 sm:top-5 text-base sm:text-lg opacity-30">🔍</span>
               </div>
-            </div>
 
-            {/* Admin Sub-Nav — scrollable on mobile */}
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-              {(['repos', 'researchers', 'addRepo', 'addResearcher'] as const).map(panel => (
-                <button key={panel} onClick={() => setAdminPanel(panel)}
-                  className={`shrink-0 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${adminPanel === panel ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-white/5 border-white/10 text-slate-400 hover:border-amber-500/40'}`}>
-                  {panel === 'repos' && '📚 Repos'}{panel === 'researchers' && '👥 Researchers'}{panel === 'addRepo' && '➕ Add Repo'}{panel === 'addResearcher' && '➕ Add Researcher'}
-                </button>
-              ))}
-            </div>
-
-            {adminPanel === 'repos' && (
-              <div className="space-y-3 sm:space-y-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-500 ml-2">All Repository Entries ({repos.length})</p>
-                {repos.map(r => (
-                  <div key={r.id} className="bg-slate-900/60 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/5 hover:border-amber-500/30 transition-all flex justify-between items-start gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5 rounded-full">{r.type}</span>
-                        <span className="text-[9px] text-slate-600">{r.year}</span>
-                        <span className="text-[9px] text-slate-600 hidden sm:inline">{r.category}</span>
-                      </div>
-                      <h4 className="text-sm sm:text-lg font-bold text-white leading-tight mb-1 line-clamp-2">{r.title}</h4>
-                      <p className="text-xs text-slate-500">By {r.leadAuthor} • {r.institution}</p>
-                    </div>
-                    <button onClick={() => setRepos(repos.filter(repo => repo.id !== r.id))} className="shrink-0 p-2 sm:p-3 bg-white/5 rounded-xl hover:bg-red-500/20 transition-colors text-slate-400 hover:text-red-400 text-xs font-black uppercase tracking-widest">Del</button>
-                  </div>
-                ))}
+              {/* Filters — scrollable row on mobile */}
+              <div className="flex flex-col gap-3 max-w-3xl mx-auto">
+                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                  {(['All', 'Student Research', 'Theory'] as const).map(t => (
+                    <button key={t} onClick={() => setFilterType(t)}
+                      className={`shrink-0 px-3 sm:px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${filterType === t ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/10 text-slate-400 hover:border-indigo-500/40'}`}>
+                      {t === 'All' ? '⬡ All' : t === 'Student Research' ? '📄 Student' : '📚 Theory'}
+                    </button>
+                  ))}
+                  {/* Year and sort dropdowns inline on mobile too */}
+                  <select value={filterYear} onChange={e => setFilterYear(e.target.value)}
+                    className="shrink-0 px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none cursor-pointer">
+                    {availableYears.map(y => <option key={y} value={y}>{y === 'All' ? '📅 All Years' : y}</option>)}
+                  </select>
+                  <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
+                    className="shrink-0 px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none cursor-pointer">
+                    <option value="newest">↓ Newest</option>
+                    <option value="oldest">↑ Oldest</option>
+                    <option value="az">A → Z</option>
+                    <option value="za">Z → A</option>
+                  </select>
+                </div>
               </div>
-            )}
 
-            {adminPanel === 'researchers' && (
-              <div className="space-y-3 sm:space-y-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-500 ml-2">Registered Researchers ({researchers.length})</p>
-                {researchers.length === 0 ? (
-                  <div className="bg-slate-900/40 p-12 rounded-2xl border border-dashed border-white/10 text-center"><p className="text-slate-500 italic text-sm">No researchers registered yet.</p></div>
-                ) : researchers.map(r => (
-                  <div key={r.studentId} className="bg-slate-900/60 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/5 hover:border-amber-500/30 transition-all flex justify-between items-center gap-4">
-                    <div className="flex items-center gap-3 sm:gap-5 min-w-0">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-base sm:text-lg font-black text-white shrink-0">
-                        {r.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-black text-white text-sm sm:text-base truncate">{r.fullName}</p>
-                        <p className="text-[10px] sm:text-xs text-slate-500 truncate">{r.course} • {r.gradeLevel}</p>
-                        <p className="text-[9px] font-mono text-slate-600">ID: {r.studentId}</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 max-w-3xl mx-auto">
+                {filteredRepos.length} {filteredRepos.length === 1 ? 'entry' : 'entries'} found
+                {filterType !== 'All' && <span className="text-indigo-500"> • {filterType}</span>}
+                {filterYear !== 'All' && <span className="text-indigo-500"> • {filterYear}</span>}
+              </p>
+
+              <div className="grid gap-4 sm:gap-6">
+                {filteredRepos.map(r => (
+                  <div key={r.id} className="bg-slate-900/40 p-4 sm:p-8 md:p-10 rounded-2xl sm:rounded-[2.5rem] border border-white/5 hover:border-indigo-500/30 transition-all backdrop-blur-sm">
+                    <div className="flex flex-wrap justify-between items-center mb-3 sm:mb-5 gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <span className={`px-3 py-1 rounded-full ${r.type === 'Theory' ? 'bg-purple-500/10 text-purple-400' : 'bg-indigo-500/10 text-indigo-400'}`}>{r.type}</span>
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                        <span className="text-slate-600 hidden sm:inline">{r.category}</span>
+                        <span>Published: {r.year}</span>
                       </div>
                     </div>
-                    <button onClick={() => setResearchers(researchers.filter(res => res.studentId !== r.studentId))} className="shrink-0 p-2 sm:p-3 bg-white/5 rounded-xl hover:bg-red-500/20 transition-colors text-slate-400 hover:text-red-400 text-xs font-black uppercase tracking-widest">Del</button>
+                    <h3 className="text-lg sm:text-2xl md:text-3xl font-serif italic text-white mb-3 sm:mb-4 leading-tight">{r.title}</h3>
+                    <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 leading-relaxed">
+                      Principal Author: <span className="text-slate-200">{r.leadAuthor}</span>
+                    </p>
+                    <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+                      Co-Authors: <span className="text-slate-400 font-medium uppercase italic">{r.coAuthors}</span>
+                    </p>
+                    <p className="text-[10px] text-slate-600 mb-1">🏛 {r.institution}</p>
+                    <p className="text-xs sm:text-sm text-slate-500 mb-4 sm:mb-5 italic">🔑 {r.keywords}</p>
+                    <div className="space-y-3 sm:space-y-4 border-t border-white/5 pt-4 sm:pt-5">
+                      <p className="text-xs sm:text-sm text-slate-400"><strong className="text-indigo-400 uppercase text-[10px] tracking-widest block mb-1">Abstract</strong>{r.abstract}</p>
+                      <p className="text-xs sm:text-sm text-slate-500"><strong className="text-slate-600 uppercase text-[10px] tracking-widest block mb-1">Methodology</strong>{r.methodology}</p>
+                      <div className="flex flex-wrap gap-3 pt-1">
+                        <a href={r.pdfUrl} target="_blank" rel="noreferrer" className="text-indigo-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-1 hover:text-white transition-colors">👁️ View Online</a>
+                        <a href={r.pdfUrl} download className="text-indigo-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-1 hover:text-white transition-colors">📥 Download PDF</a>
+                      </div>
+                    </div>
                   </div>
                 ))}
+                {filteredRepos.length === 0 && (
+                  <div className="bg-slate-900/40 p-10 sm:p-20 rounded-3xl sm:rounded-[3rem] border border-dashed border-white/10 text-center space-y-4">
+                    <p className="text-4xl sm:text-5xl">🔬</p>
+                    <p className="text-white font-black text-lg sm:text-xl uppercase tracking-tight">No Studies Found</p>
+                    <p className="text-slate-500 text-sm">Try adjusting your search or filters.</p>
+                    <button onClick={() => { setSearchQuery(''); setFilterType('All'); setFilterYear('All'); }} className="px-6 py-3 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/40 transition-all">Clear Filters</button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+          )}
 
-            {adminPanel === 'addRepo' && (
-              <div className="bg-white/5 p-5 sm:p-12 rounded-2xl sm:rounded-[3.5rem] border border-white/10 backdrop-blur-xl shadow-2xl">
+          {/* ── PROFILE ── */}
+          {activeTab === 'profile' && isLoggedIn && !isAdmin && (
+            <div className="max-w-5xl mx-auto space-y-6 sm:space-y-10">
+              <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-[3rem] p-5 sm:p-10 backdrop-blur-xl flex flex-col items-center sm:flex-row sm:items-start gap-5 sm:gap-10">
+                <div className="relative group shrink-0">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl sm:rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl sm:text-4xl font-black shadow-2xl overflow-hidden border-2 border-white/10">
+                    {userProfile.profilePic ? <img src={userProfile.profilePic} alt="PFP" className="w-full h-full object-cover" /> : currentUser.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl sm:rounded-[2.5rem] cursor-pointer text-[10px] font-black uppercase tracking-widest text-white">
+                    Change <input type="file" className="hidden" accept="image/*" onChange={handleProfilePicChange} />
+                  </label>
+                </div>
+                <div className="text-center sm:text-left space-y-2 sm:space-y-3 w-full">
+                  <h2 className="text-xl sm:text-3xl md:text-4xl font-black text-white uppercase tracking-tighter break-words">{userProfile.fullName}</h2>
+                  <p className="text-indigo-400 text-xs font-black uppercase tracking-[0.3em]">Verified Researcher • {userProfile.university}</p>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{userProfile.course} • {userProfile.gradeLevel}</p>
+                  <p className="text-slate-600 text-[9px] font-mono">ID: {userProfile.studentId}</p>
+                  <div className="px-5 py-3 bg-white/5 rounded-2xl border border-white/5 inline-block text-center mt-2">
+                    <p className="text-2xl font-bold text-white">{userStudies.length}</p>
+                    <p className="text-[8px] uppercase tracking-widest text-slate-500">Publications</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4 sm:space-y-6">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-500 ml-1 sm:ml-2">My Published Repositories</h3>
+                {userStudies.length === 0 ? (
+                  <div className="bg-slate-900/40 p-10 sm:p-16 rounded-2xl sm:rounded-[3rem] border border-dashed border-white/10 text-center">
+                    <p className="text-slate-500 italic text-sm mb-4">No personal research cataloged yet.</p>
+                    <button onClick={() => navigate('contribute')} className="text-indigo-500 font-black uppercase text-[10px] tracking-widest">Start First Submission →</button>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:gap-4">
+                    {userStudies.map(r => (
+                      <div key={r.id} className="group bg-slate-900/60 p-4 sm:p-7 rounded-2xl sm:rounded-3xl border border-white/5 hover:border-indigo-500/40 transition-all flex justify-between items-start sm:items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1">{r.type}</p>
+                          <h4 className="text-sm sm:text-lg font-bold text-white group-hover:text-indigo-300 transition-colors leading-tight">{r.title}</h4>
+                          <p className="text-xs text-slate-500 mt-1">Cataloged on {r.year}</p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button className="p-2 sm:p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-slate-400 hover:text-white text-xs">Edit</button>
+                          <button onClick={() => setRepos(repos.filter(repo => repo.id !== r.id))} className="p-2 sm:p-3 bg-white/5 rounded-xl hover:bg-red-500/20 transition-colors text-slate-400 hover:text-red-400 text-xs">Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── CONTRIBUTE ── */}
+          {activeTab === 'contribute' && isLoggedIn && !isAdmin && (
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-white/5 p-5 sm:p-10 md:p-12 rounded-2xl sm:rounded-[3.5rem] border border-white/10 backdrop-blur-xl shadow-2xl">
                 <header className="mb-6 sm:mb-10">
-                  <h3 className="text-xl sm:text-3xl font-black text-white uppercase tracking-tighter">Add Repository Entry</h3>
-                  <p className="text-amber-500 text-[10px] font-black uppercase tracking-[0.4em] mt-2">Admin — Direct Submission</p>
+                  <h2 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">Upload Publication</h2>
+                  <p className="text-indigo-500 text-[10px] font-black uppercase tracking-[0.4em] mt-2">New Repository Entry</p>
                 </header>
-                <form onSubmit={handleAdminAddRepo} className="space-y-4 sm:space-y-6">
-                  <div className="space-y-2"><label className={labelCls}>Full Title</label><input required type="text" value={adminTitle} onChange={e => setAdminTitle(e.target.value)} placeholder="Research title..." className={adminInputCls} /></div>
+                <form onSubmit={handlePublish} className="space-y-4 sm:space-y-6">
+                  <div className="space-y-2"><label className={labelCls}>Full Title of the Research</label><input required type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Enter full research title..." className={inputCls} /></div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                    <div className="space-y-2"><label className={labelCls}>Lead Author</label><input required type="text" value={adminLeadAuthor} onChange={e => setAdminLeadAuthor(e.target.value)} placeholder="Principal author" className={adminInputCls} /></div>
-                    <div className="space-y-2"><label className={labelCls}>Co-Authors</label><input type="text" value={adminCoAuthors} onChange={e => setAdminCoAuthors(e.target.value)} placeholder="Separate with commas" className={adminInputCls} /></div>
+                    <div className="space-y-2"><label className={labelCls}>Co-Authors</label><input type="text" value={coAuthors} onChange={e => setCoAuthors(e.target.value)} placeholder="Separate with commas" className={inputCls} /></div>
+                    <div className="space-y-2"><label className={labelCls}>Date Published</label><input type="date" value={publishDate} onChange={e => setPublishDate(e.target.value)} className={inputCls} /></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                    <div className="space-y-2"><label className={labelCls}>Date Published</label><input type="date" value={adminPublishDate} onChange={e => setAdminPublishDate(e.target.value)} className={adminInputCls} /></div>
-                    <div className="space-y-2"><label className={labelCls}>Classification</label>
-                      <select value={adminType} onChange={e => setAdminType(e.target.value as any)} className={adminInputCls}>
+                    <div className="space-y-2"><label className={labelCls}>Keywords</label><input type="text" value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="e.g. Psychology, IoT, Behavior" className={inputCls} /></div>
+                    <div className="space-y-2"><label className={labelCls}>Archive Classification</label>
+                      <select value={type} onChange={e => setType(e.target.value as any)} className={inputCls}>
                         <option value="Student Research">Student Research Paper</option>
                         <option value="Theory">Classical Theory Framework</option>
                       </select>
                     </div>
                   </div>
-                  <div className="space-y-2"><label className={labelCls}>Keywords</label><input type="text" value={adminKeywords} onChange={e => setAdminKeywords(e.target.value)} placeholder="e.g. Psychology, Behavior" className={adminInputCls} /></div>
-                  <div className="space-y-2"><label className={labelCls}>Abstract</label><textarea required rows={4} value={adminAbstract} onChange={e => setAdminAbstract(e.target.value)} placeholder="Brief summary..." className={`${adminInputCls} resize-none`} /></div>
-                  <div className="space-y-2"><label className={labelCls}>Methodology</label><input required type="text" value={adminMethodology} onChange={e => setAdminMethodology(e.target.value)} placeholder="e.g. Case Study, Survey..." className={adminInputCls} /></div>
-                  <button type="submit" className="w-full py-4 sm:py-6 bg-amber-500 text-slate-950 font-black rounded-2xl sm:rounded-3xl uppercase tracking-widest text-xs hover:bg-amber-400 transition-all shadow-xl">Add to Repository</button>
+                  <div className="space-y-2"><label className={labelCls}>Abstract</label><textarea required rows={4} value={abstract} onChange={e => setAbstract(e.target.value)} placeholder="Provide a brief summary of the study..." className={`${inputCls} resize-none`} /></div>
+                  <div className="space-y-2"><label className={labelCls}>Methodology</label><input required type="text" value={methodology} onChange={e => setMethodology(e.target.value)} placeholder="e.g. Case Study, Quantitative Survey..." className={inputCls} /></div>
+                  <div className="p-4 sm:p-6 border border-dashed border-indigo-500/30 rounded-2xl sm:rounded-3xl bg-indigo-600/5 space-y-3 text-center">
+                    <label className="block text-[10px] font-black uppercase text-indigo-400 tracking-widest">Full Study Document (PDF)</label>
+                    <input required type="file" accept=".pdf" className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer" />
+                    <p className="text-[9px] text-slate-500">Maximum file size: 10MB</p>
+                  </div>
+                  <button className="w-full py-4 sm:py-5 bg-white text-slate-950 font-black rounded-2xl sm:rounded-3xl uppercase tracking-widest text-xs hover:bg-indigo-400 hover:text-white transition-all shadow-xl active:scale-[0.98]">
+                    {loading ? "Cataloging Entry..." : "Submit for Review"}
+                  </button>
                 </form>
               </div>
-            )}
+            </div>
+          )}
 
-            {adminPanel === 'addResearcher' && (
-              <div className="bg-white/5 p-5 sm:p-12 rounded-2xl sm:rounded-[3.5rem] border border-white/10 backdrop-blur-xl shadow-2xl max-w-2xl">
-                <header className="mb-6 sm:mb-10">
-                  <h3 className="text-xl sm:text-3xl font-black text-white uppercase tracking-tighter">Add Researcher</h3>
-                  <p className="text-amber-500 text-[10px] font-black uppercase tracking-[0.4em] mt-2">Admin — Manual Registration</p>
-                </header>
-                <form onSubmit={handleAdminAddResearcher} className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="space-y-2"><label className={labelCls}>Full Name</label><input required type="text" value={adminRegName} onChange={e => setAdminRegName(e.target.value)} placeholder="Full Name" className={adminInputCls} /></div>
-                  <div className="space-y-2"><label className={labelCls}>Student ID</label><input required type="text" value={adminRegId} onChange={e => setAdminRegId(e.target.value)} placeholder="Student ID" className={adminInputCls} /></div>
-                  <div className="space-y-2"><label className={labelCls}>Course</label><input required type="text" value={adminRegCourse} onChange={e => setAdminRegCourse(e.target.value)} placeholder="Course" className={adminInputCls} /></div>
-                  <div className="space-y-2"><label className={labelCls}>Grade Level</label><input required type="text" value={adminRegLevel} onChange={e => setAdminRegLevel(e.target.value)} placeholder="Grade Level" className={adminInputCls} /></div>
-                  <div className="space-y-2 sm:col-span-2"><label className={labelCls}>University</label><input required type="text" value={adminRegUni} onChange={e => setAdminRegUni(e.target.value)} placeholder="University" className={adminInputCls} /></div>
-                  <button type="submit" className="sm:col-span-2 py-4 sm:py-5 bg-amber-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest hover:bg-amber-400 transition-all">Add Researcher</button>
+          {/* ── ADMIN PANEL ── */}
+          {activeTab === 'admin' && isAdmin && (
+            <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">Admin <span className="text-amber-400">Panel</span></h2>
+                  <p className="text-amber-500/60 text-[10px] font-black uppercase tracking-[0.4em] mt-1">Full System Access</p>
+                </div>
+                <div className="flex gap-2 sm:gap-3 flex-wrap">
+                  <span className="px-3 sm:px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-black uppercase tracking-widest text-amber-400">{repos.length} Repos</span>
+                  <span className="px-3 sm:px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-black uppercase tracking-widest text-amber-400">{researchers.length} Researchers</span>
+                </div>
+              </div>
+
+              {/* Admin Sub-Nav — scrollable on mobile */}
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                {(['repos', 'researchers', 'addRepo', 'addResearcher'] as const).map(panel => (
+                  <button key={panel} onClick={() => setAdminPanel(panel)}
+                    className={`shrink-0 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${adminPanel === panel ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-white/5 border-white/10 text-slate-400 hover:border-amber-500/40'}`}>
+                    {panel === 'repos' && '📚 Repos'}{panel === 'researchers' && '👥 Researchers'}{panel === 'addRepo' && '➕ Add Repo'}{panel === 'addResearcher' && '➕ Add Researcher'}
+                  </button>
+                ))}
+              </div>
+
+              {adminPanel === 'repos' && (
+                <div className="space-y-3 sm:space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-500 ml-2">All Repository Entries ({repos.length})</p>
+                  {repos.map(r => (
+                    <div key={r.id} className="bg-slate-900/60 p-4 sm:p-7 rounded-2xl sm:rounded-3xl border border-white/5 hover:border-amber-500/30 transition-all flex justify-between items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5 rounded-full">{r.type}</span>
+                          <span className="text-[9px] text-slate-600">{r.year}</span>
+                          <span className="text-[9px] text-slate-600 hidden sm:inline">{r.category}</span>
+                        </div>
+                        <h4 className="text-sm sm:text-base font-bold text-white leading-tight mb-1 line-clamp-2">{r.title}</h4>
+                        <p className="text-xs text-slate-500">By {r.leadAuthor} • {r.institution}</p>
+                      </div>
+                      <button onClick={() => setRepos(repos.filter(repo => repo.id !== r.id))} className="shrink-0 p-2 sm:p-3 bg-white/5 rounded-xl hover:bg-red-500/20 transition-colors text-slate-400 hover:text-red-400 text-xs font-black uppercase tracking-widest">Del</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {adminPanel === 'researchers' && (
+                <div className="space-y-3 sm:space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-500 ml-2">Registered Researchers ({researchers.length})</p>
+                  {researchers.length === 0 ? (
+                    <div className="bg-slate-900/40 p-12 rounded-2xl border border-dashed border-white/10 text-center"><p className="text-slate-500 italic text-sm">No researchers registered yet.</p></div>
+                  ) : researchers.map(r => (
+                    <div key={r.studentId} className="bg-slate-900/60 p-4 sm:p-7 rounded-2xl sm:rounded-3xl border border-white/5 hover:border-amber-500/30 transition-all flex justify-between items-center gap-4">
+                      <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-base sm:text-lg font-black text-white shrink-0">
+                          {r.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-black text-white text-sm sm:text-base truncate">{r.fullName}</p>
+                          <p className="text-[10px] sm:text-xs text-slate-500 truncate">{r.course} • {r.gradeLevel}</p>
+                          <p className="text-[9px] font-mono text-slate-600">ID: {r.studentId}</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setResearchers(researchers.filter(res => res.studentId !== r.studentId))} className="shrink-0 p-2 sm:p-3 bg-white/5 rounded-xl hover:bg-red-500/20 transition-colors text-slate-400 hover:text-red-400 text-xs font-black uppercase tracking-widest">Del</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {adminPanel === 'addRepo' && (
+                <div className="bg-white/5 p-5 sm:p-10 md:p-12 rounded-2xl sm:rounded-[3.5rem] border border-white/10 backdrop-blur-xl shadow-2xl">
+                  <header className="mb-6 sm:mb-10">
+                    <h3 className="text-xl sm:text-3xl font-black text-white uppercase tracking-tighter">Add Repository Entry</h3>
+                    <p className="text-amber-500 text-[10px] font-black uppercase tracking-[0.4em] mt-2">Admin — Direct Submission</p>
+                  </header>
+                  <form onSubmit={handleAdminAddRepo} className="space-y-4 sm:space-y-6">
+                    <div className="space-y-2"><label className={labelCls}>Full Title</label><input required type="text" value={adminTitle} onChange={e => setAdminTitle(e.target.value)} placeholder="Research title..." className={adminInputCls} /></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                      <div className="space-y-2"><label className={labelCls}>Lead Author</label><input required type="text" value={adminLeadAuthor} onChange={e => setAdminLeadAuthor(e.target.value)} placeholder="Principal author" className={adminInputCls} /></div>
+                      <div className="space-y-2"><label className={labelCls}>Co-Authors</label><input type="text" value={adminCoAuthors} onChange={e => setAdminCoAuthors(e.target.value)} placeholder="Separate with commas" className={adminInputCls} /></div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                      <div className="space-y-2"><label className={labelCls}>Date Published</label><input type="date" value={adminPublishDate} onChange={e => setAdminPublishDate(e.target.value)} className={adminInputCls} /></div>
+                      <div className="space-y-2"><label className={labelCls}>Classification</label>
+                        <select value={adminType} onChange={e => setAdminType(e.target.value as any)} className={adminInputCls}>
+                          <option value="Student Research">Student Research Paper</option>
+                          <option value="Theory">Classical Theory Framework</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-2"><label className={labelCls}>Keywords</label><input type="text" value={adminKeywords} onChange={e => setAdminKeywords(e.target.value)} placeholder="e.g. Psychology, Behavior" className={adminInputCls} /></div>
+                    <div className="space-y-2"><label className={labelCls}>Abstract</label><textarea required rows={4} value={adminAbstract} onChange={e => setAdminAbstract(e.target.value)} placeholder="Brief summary..." className={`${adminInputCls} resize-none`} /></div>
+                    <div className="space-y-2"><label className={labelCls}>Methodology</label><input required type="text" value={adminMethodology} onChange={e => setAdminMethodology(e.target.value)} placeholder="e.g. Case Study, Survey..." className={adminInputCls} /></div>
+                    <button type="submit" className="w-full py-4 sm:py-5 bg-amber-500 text-slate-950 font-black rounded-2xl sm:rounded-3xl uppercase tracking-widest text-xs hover:bg-amber-400 transition-all shadow-xl">Add to Repository</button>
+                  </form>
+                </div>
+              )}
+
+              {adminPanel === 'addResearcher' && (
+                <div className="bg-white/5 p-5 sm:p-10 md:p-12 rounded-2xl sm:rounded-[3.5rem] border border-white/10 backdrop-blur-xl shadow-2xl max-w-2xl">
+                  <header className="mb-6 sm:mb-10">
+                    <h3 className="text-xl sm:text-3xl font-black text-white uppercase tracking-tighter">Add Researcher</h3>
+                    <p className="text-amber-500 text-[10px] font-black uppercase tracking-[0.4em] mt-2">Admin — Manual Registration</p>
+                  </header>
+                  <form onSubmit={handleAdminAddResearcher} className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="space-y-2"><label className={labelCls}>Full Name</label><input required type="text" value={adminRegName} onChange={e => setAdminRegName(e.target.value)} placeholder="Full Name" className={adminInputCls} /></div>
+                    <div className="space-y-2"><label className={labelCls}>Student ID</label><input required type="text" value={adminRegId} onChange={e => setAdminRegId(e.target.value)} placeholder="Student ID" className={adminInputCls} /></div>
+                    <div className="space-y-2"><label className={labelCls}>Course</label><input required type="text" value={adminRegCourse} onChange={e => setAdminRegCourse(e.target.value)} placeholder="Course" className={adminInputCls} /></div>
+                    <div className="space-y-2"><label className={labelCls}>Grade Level</label><input required type="text" value={adminRegLevel} onChange={e => setAdminRegLevel(e.target.value)} placeholder="Grade Level" className={adminInputCls} /></div>
+                    <div className="space-y-2 sm:col-span-2"><label className={labelCls}>University</label><input required type="text" value={adminRegUni} onChange={e => setAdminRegUni(e.target.value)} placeholder="University" className={adminInputCls} /></div>
+                    <button type="submit" className="sm:col-span-2 py-4 sm:py-5 bg-amber-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest hover:bg-amber-400 transition-all">Add Researcher</button>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── SIGNUP ── */}
+          {activeTab === 'signup' && (
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white/5 p-5 sm:p-10 md:p-12 rounded-2xl sm:rounded-[3.5rem] border border-white/10 backdrop-blur-xl">
+                <h2 className="text-2xl sm:text-4xl font-black text-white mb-6 sm:mb-10">Researcher Registry</h2>
+                <form className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  <input type="text" value={regName} onChange={e => setRegName(e.target.value)} placeholder="Full Name" className={inputCls} />
+                  <input type="text" value={regId} onChange={e => setRegId(e.target.value)} placeholder="Student ID" className={inputCls} />
+                  <input type="text" value={regCourse} onChange={e => setRegCourse(e.target.value)} placeholder="Course" className={inputCls} />
+                  <input type="text" value={regLevel} onChange={e => setRegLevel(e.target.value)} placeholder="Grade Level" className={inputCls} />
+                  <input type="text" value={regUni} onChange={e => setRegUni(e.target.value)} placeholder="University" className={`${inputCls} sm:col-span-2`} />
+                  <input type="email" placeholder="Valid Email" className={`${inputCls} sm:col-span-2`} />
+                  <button type="button" onClick={handleCompleteRegistration} className="sm:col-span-2 py-4 sm:py-5 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-[0.98]">Complete Registration</button>
                 </form>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* ── SIGNUP ── */}
-        {activeTab === 'signup' && (
-          <div className="max-w-2xl mx-auto animate-in zoom-in-95">
-            <div className="bg-white/5 p-5 sm:p-12 rounded-2xl sm:rounded-[3.5rem] border border-white/10 backdrop-blur-xl">
-              <h2 className="text-2xl sm:text-4xl font-black text-white mb-6 sm:mb-10">Researcher Registry</h2>
-              <form className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <input type="text" value={regName} onChange={e => setRegName(e.target.value)} placeholder="Full Name" className={inputCls} />
-                <input type="text" value={regId} onChange={e => setRegId(e.target.value)} placeholder="Student ID" className={inputCls} />
-                <input type="text" value={regCourse} onChange={e => setRegCourse(e.target.value)} placeholder="Course" className={inputCls} />
-                <input type="text" value={regLevel} onChange={e => setRegLevel(e.target.value)} placeholder="Grade Level" className={inputCls} />
-                <input type="text" value={regUni} onChange={e => setRegUni(e.target.value)} placeholder="University" className={`${inputCls} sm:col-span-2`} />
-                <input type="email" placeholder="Valid Email" className={`${inputCls} sm:col-span-2`} />
-                <button type="button" onClick={handleCompleteRegistration} className="sm:col-span-2 py-4 sm:py-5 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest hover:bg-indigo-500 transition-all">Complete Registration</button>
-              </form>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── LOGIN ── */}
-        {activeTab === 'login' && (
-          <div className="max-w-md mx-auto py-6 sm:py-12">
-            <div className="bg-white/5 p-5 sm:p-12 rounded-2xl sm:rounded-[3.5rem] border border-white/10 backdrop-blur-xl">
-              <h2 className="text-2xl sm:text-3xl font-black text-white mb-6 sm:mb-8 text-center">Sign In</h2>
-              <div className="space-y-3 sm:space-y-4 mb-5 sm:mb-6">
-                <input type="text" value={loginId} onChange={e => setLoginId(e.target.value)} placeholder="Student ID / Username" className={inputCls} />
-                <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="Password" className={inputCls} />
+          {/* ── LOGIN ── */}
+          {activeTab === 'login' && (
+            <div className="max-w-md mx-auto py-6 sm:py-12">
+              <div className="bg-white/5 p-5 sm:p-10 md:p-12 rounded-2xl sm:rounded-[3.5rem] border border-white/10 backdrop-blur-xl">
+                <h2 className="text-2xl sm:text-3xl font-black text-white mb-6 sm:mb-8 text-center">Sign In</h2>
+                <div className="space-y-3 sm:space-y-4 mb-5 sm:mb-6">
+                  <input type="text" value={loginId} onChange={e => setLoginId(e.target.value)} placeholder="Student ID / Username" className={inputCls} />
+                  <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="Password" className={inputCls} />
+                </div>
+                {loginError && <p className="text-red-400 text-xs font-bold mb-4 uppercase tracking-widest text-center">{loginError}</p>}
+                <button onClick={handleLogin} className="w-full py-4 sm:py-5 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest shadow-2xl shadow-indigo-600/30 hover:bg-indigo-500 transition-all active:scale-[0.98]">Authenticate</button>
+                <p className="text-center text-slate-600 text-xs mt-4">
+                  No account?{' '}
+                  <button onClick={() => navigate('signup')} className="text-indigo-400 font-bold hover:text-indigo-300">Register here</button>
+                </p>
               </div>
-              {loginError && <p className="text-red-400 text-xs font-bold mb-4 uppercase tracking-widest text-center">{loginError}</p>}
-              <button onClick={handleLogin} className="w-full py-4 sm:py-5 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest shadow-2xl shadow-indigo-600/30 hover:bg-indigo-500 transition-all">Authenticate</button>
-              <p className="text-center text-slate-600 text-xs mt-4">
-                No account?{' '}
-                <button onClick={() => navigate('signup')} className="text-indigo-400 font-bold hover:text-indigo-300">Register here</button>
-              </p>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
 
-      <footer className="py-10 sm:py-20 border-t border-white/5 text-center space-y-3 opacity-50 px-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.6em] sm:tracking-[0.8em]">PsychVault Neural Registry • 2026</p>
-        <p className="text-[9px] font-bold italic uppercase tracking-widest">Polytechnic University of the Philippines - Biñan Campus</p>
-      </footer>
+        <footer className="py-10 sm:py-16 border-t border-white/5 text-center space-y-3 opacity-50 px-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] sm:tracking-[0.6em]">PsychVault Neural Registry • 2026</p>
+          <p className="text-[9px] font-bold italic uppercase tracking-widest">Polytechnic University of the Philippines - Biñan Campus</p>
+        </footer>
+
+      </div>{/* end relative content wrapper */}
     </div>
   )
 }
