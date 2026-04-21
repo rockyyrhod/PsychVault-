@@ -1,11 +1,7 @@
 [build]
-  # This tells Netlify to enter your project folder
   base = "FullStack"
-  
-  # This tells it what command to run inside that folder
-  command = "npm run build"
-  
-  # This is the secret: it points to the folder created AFTER the build
+  # CI= tells Netlify to ignore warnings and only stop for real errors
+  command = "CI= npm run build"
   publish = "dist"
 
 [[redirects]]
