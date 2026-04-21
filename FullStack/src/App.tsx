@@ -111,6 +111,8 @@ export default function App() {
   const [filterType, setFilterType] = useState<'All' | 'Theory' | 'Student Research'>('All');
   const [filterYear, setFilterYear] = useState<string>('All');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'az' | 'za'>('newest');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
   const [loading, setLoading] = useState(false);
   const [repos, setRepos] = useState<ResearchRepo[]>(INITIAL_REPOS);
 
@@ -159,6 +161,13 @@ export default function App() {
     if (sortBy === 'za') result = result.sort((a, b) => b.title.localeCompare(a.title));
     return result;
   }, [searchQuery, filterType, filterYear, sortBy, repos]);
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(filteredRepos.length / ITEMS_PER_PAGE)), [filteredRepos.length]);
+  const paginatedRepos = useMemo(() => {
+    const safePage = Math.min(currentPage, totalPages);
+    const start = (safePage - 1) * ITEMS_PER_PAGE;
+    return filteredRepos.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredRepos, currentPage, totalPages]);
 
   const recentRepos = useMemo(() => [...repos].sort((a, b) => b.year.localeCompare(a.year)).slice(0, 4), [repos]);
 
@@ -422,7 +431,7 @@ export default function App() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                   placeholder="Search by title, author, or keywords..."
                   className="w-full p-4 sm:p-5 pl-12 sm:pl-14 bg-white/5 border border-white/10 rounded-2xl sm:rounded-[2rem] outline-none focus:border-indigo-500 transition-all text-sm sm:text-base"
                   autoFocus
@@ -434,17 +443,17 @@ export default function App() {
               <div className="flex flex-col gap-3 max-w-3xl mx-auto">
                 <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                   {(['All', 'Student Research', 'Theory'] as const).map(t => (
-                    <button key={t} onClick={() => setFilterType(t)}
+                    <button key={t} onClick={() => { setFilterType(t); setCurrentPage(1); }}
                       className={`shrink-0 px-3 sm:px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${filterType === t ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/10 text-slate-400 hover:border-indigo-500/40'}`}>
                       {t === 'All' ? '⬡ All' : t === 'Student Research' ? '📄 Student' : '📚 Theory'}
                     </button>
                   ))}
                   {/* Year and sort dropdowns inline on mobile too */}
-                  <select value={filterYear} onChange={e => setFilterYear(e.target.value)}
+                  <select value={filterYear} onChange={e => { setFilterYear(e.target.value); setCurrentPage(1); }}
                     className="shrink-0 px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none cursor-pointer">
                     {availableYears.map(y => <option key={y} value={y}>{y === 'All' ? '📅 All Years' : y}</option>)}
                   </select>
-                  <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
+                  <select value={sortBy} onChange={e => { setSortBy(e.target.value as any); setCurrentPage(1); }}
                     className="shrink-0 px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none cursor-pointer">
                     <option value="newest">↓ Newest</option>
                     <option value="oldest">↑ Oldest</option>
@@ -458,10 +467,11 @@ export default function App() {
                 {filteredRepos.length} {filteredRepos.length === 1 ? 'entry' : 'entries'} found
                 {filterType !== 'All' && <span className="text-indigo-500"> • {filterType}</span>}
                 {filterYear !== 'All' && <span className="text-indigo-500"> • {filterYear}</span>}
+                {totalPages > 1 && <span className="text-slate-600"> • Page {Math.min(currentPage, totalPages)} of {totalPages}</span>}
               </p>
 
               <div className="grid gap-4 sm:gap-6">
-                {filteredRepos.map(r => (
+                {paginatedRepos.map(r => (
                   <div key={r.id} className="bg-slate-900/40 p-4 sm:p-8 md:p-10 rounded-2xl sm:rounded-[2.5rem] border border-white/5 hover:border-indigo-500/30 transition-all backdrop-blur-sm">
                     <div className="flex flex-wrap justify-between items-center mb-3 sm:mb-5 gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
                       <span className={`px-3 py-1 rounded-full ${r.type === 'Theory' ? 'bg-purple-500/10 text-purple-400' : 'bg-indigo-500/10 text-indigo-400'}`}>{r.type}</span>
@@ -494,10 +504,65 @@ export default function App() {
                     <p className="text-4xl sm:text-5xl">🔬</p>
                     <p className="text-white font-black text-lg sm:text-xl uppercase tracking-tight">No Studies Found</p>
                     <p className="text-slate-500 text-sm">Try adjusting your search or filters.</p>
-                    <button onClick={() => { setSearchQuery(''); setFilterType('All'); setFilterYear('All'); }} className="px-6 py-3 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/40 transition-all">Clear Filters</button>
+                    <button onClick={() => { setSearchQuery(''); setFilterType('All'); setFilterYear('All'); setCurrentPage(1); }} className="px-6 py-3 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600/40 transition-all">Clear Filters</button>
                   </div>
                 )}
               </div>
+
+              {/* ── PAGINATION BAR ── */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-1 sm:gap-2 pt-4 pb-2 flex-wrap">
+                  {/* Prev */}
+                  <button
+                    onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={currentPage <= 1}
+                    className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all disabled:opacity-30 disabled:cursor-not-allowed bg-white/5 border-white/10 text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400"
+                  >
+                    ← Prev
+                  </button>
+
+                  {/* Page number buttons — smart windowed display */}
+                  {(() => {
+                    const safePage = Math.min(currentPage, totalPages);
+                    const pages: (number | '...')[] = [];
+                    if (totalPages <= 7) {
+                      for (let i = 1; i <= totalPages; i++) pages.push(i);
+                    } else {
+                      pages.push(1);
+                      if (safePage > 3) pages.push('...');
+                      for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) pages.push(i);
+                      if (safePage < totalPages - 2) pages.push('...');
+                      pages.push(totalPages);
+                    }
+                    return pages.map((p, i) =>
+                      p === '...' ? (
+                        <span key={`ellipsis-${i}`} className="px-2 text-slate-600 text-[10px] font-black select-none">…</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => { setCurrentPage(p as number); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                          className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-[11px] font-black transition-all border ${
+                            safePage === p
+                              ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                              : 'bg-white/5 border-white/10 text-slate-400 hover:border-indigo-500/50 hover:text-indigo-300'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    );
+                  })()}
+
+                  {/* Next */}
+                  <button
+                    onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={currentPage >= totalPages}
+                    className="px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all disabled:opacity-30 disabled:cursor-not-allowed bg-white/5 border-white/10 text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400"
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
