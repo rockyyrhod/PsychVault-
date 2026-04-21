@@ -1,0 +1,14 @@
+[build]
+  # This tells Netlify to enter your project folder
+  base = "FullStack"
+  
+  # This tells it what command to run inside that folder
+  command = "npm run build"
+  
+  # This is the secret: it points to the folder created AFTER the build
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
