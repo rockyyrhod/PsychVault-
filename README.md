@@ -1,7 +1,13 @@
 🧠 PsychVault - Neural Research Registry
 PsychVault is a high-performance, full-stack research repository designed for the PUP Biñan Campus community. It serves as a centralized "Neural Vault" for archiving psychological theories and student-led research studies, bridging the gap between student contributors and academic resources.
 
-📸 Updated App Preview
+📸 Website Preview
+![App Screenshot](FullStack/screenshots/Overview.png)
+
+![Signup Page](FullStack/screenshots/Signup_Page.png)
+
+![Upload Page](FullStack/screenshots/Upload_Page.png)
+
 ✨ Core Features
 Full-Stack Integration: Real-time data persistence using Supabase (PostgreSQL).
 
@@ -31,4 +37,4 @@ Security: PostgreSQL Row Level Security (RLS) & Environment Variable Masking
 
 supabaseClient.ts: The bridge for direct database communication.
 
-Developed with ⚖️ and 💻 by Rhodcille Jhon M. Borja | Association of Computer Engineering Students (ACES) - 2026
+Developed by Rhodcille Jhon M. Borja | Association of Computer Engineering Students (ACES) - 2026
