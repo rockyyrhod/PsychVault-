@@ -1,26 +1,34 @@
-# 🧠 PsychVault - Academic Research Archive
+🧠 PsychVault - Neural Research Registry
+PsychVault is a high-performance, full-stack research repository designed for the PUP Biñan Campus community. It serves as a centralized "Neural Vault" for archiving psychological theories and student-led research studies, bridging the gap between student contributors and academic resources.
 
-**PsychVault** is a modern, student-centric research repository designed for the **Psychology Students of PUP Biñan Campus** community. It allows researchers to explore psychological theories and publish their own studies in a secure, academic environment.
+📸 Updated App Preview
+✨ Core Features
+Full-Stack Integration: Real-time data persistence using Supabase (PostgreSQL).
 
-## 📸 App Preview
-![App Screenshot](FrontEnd/screenshots/Overview.png) 
-![Signup Page](FrontEnd/screenshots/Signup_Page.png)
-![Upload Page](FrontEnd/screenshots/Upload_Page.png)
+Search & Filter Engine: Dynamic filtering by research type (Student Research vs. Classical Theory), publication year, and keyword matching.
 
-## ✨ Core Features
-* **Searchable Archive:** Instant filtering of research papers by title or author.
-* **Researcher Profiles:** Interactive modals showing academic focus and publication history.
-* **Secure Submission:** A protected contribution terminal for authorized student researchers.
-* **Detailed Metadata:** Support for co-authors, publication dates, and methodology summaries.
-* **PDF Integration:** Link and manage full study manuscripts for peer review.
-* **Student Registry:** Specific signup protocol requiring Student ID and institutional verification.
+Researcher Dashboard: Personalized profile views including institutional details, publication counts, and customizable profile pictures.
 
-## 🛠️ Tech Stack
-* **Framework:** React 18
-* **Styling:** Tailwind CSS (Glassmorphism UI)
-* **Build Tool:** Vite
-* **Icons/Branding:** ACES Logo Integration
+Cloud Document Management: Secure PDF hosting via Supabase Storage, allowing users to either view manuscripts online or download them for offline peer review.
 
+Secure Contributions: Row Level Security (RLS) policies ensuring only authenticated students can catalog new research.
 
----
-*Developed by **Rhodcille Jhon M. Borja** of **Association of Computer Engineering Students (ACES)** - 2026*
+Dynamic UI: High-fidelity Glassmorphism interface with smooth tab-navigation animations.
+
+🛠️ Tech Stack
+Frontend: React 18, TypeScript, Vite
+
+Backend-as-a-Service: Supabase (Database, Auth, and Storage)
+
+Styling: Tailwind CSS (Custom Dark Mode & Glassmorphism)
+
+Security: PostgreSQL Row Level Security (RLS) & Environment Variable Masking
+
+📂 Project Structure
+/FrontEnd: The core React application and asset library.
+
+.env: (Ignored) Secure storage for Supabase API keys.
+
+supabaseClient.ts: The bridge for direct database communication.
+
+Developed with ⚖️ and 💻 by Rhodcille Jhon M. Borja | Association of Computer Engineering Students (ACES) - 2026
