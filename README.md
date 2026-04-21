@@ -1,6 +1,6 @@
 # 🧠 PsychVault - Neural Research Registry
 
-**PsychVault** is a high-performance, full-stack research repository engineered for the **PUP Biñan Campus** academic community. It serves as a centralized "Neural Vault" for archiving psychological theories and student-led studies, effectively bridging the gap between student contributors and scholarly resources.
+**PsychVault** is a high-performance, full-stack research repository engineered for the **Psychology Students** of **Polytechnic University of the Philippines - Biñan Campus**. It serves as a centralized "Neural Vault" for archiving psychological theories and student-led studies, effectively bridging the gap between student contributors and scholarly resources.
 
 ---
 
