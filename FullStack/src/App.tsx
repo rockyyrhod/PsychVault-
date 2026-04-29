@@ -82,6 +82,7 @@ export default function App() {
   const [regCourse, setRegCourse] = useState('');
   const [regLevel, setRegLevel] = useState('');
   const [regUni, setRegUni] = useState('');
+  const [regError, setRegError] = useState('');
 
   const [adminRegName, setAdminRegName] = useState('');
   const [adminRegId, setAdminRegId] = useState('');
@@ -210,8 +211,14 @@ export default function App() {
   };
 
   const handleCompleteRegistration = () => {
-    const r: Researcher = { fullName: regName, studentId: regId, course: regCourse, gradeLevel: regLevel, university: regUni, profilePic: null };
-    setCurrentUser(regName); setUserProfile(r); setResearchers(prev => [...prev, r]);
+    setRegError('');
+    if (!regName.trim() || !regId.trim() || !regCourse.trim() || !regLevel.trim() || !regUni.trim()) {
+      setRegError('Please fill in all required fields before registering.');
+      return;
+    }
+    const r: Researcher = { fullName: regName.trim(), studentId: regId.trim(), course: regCourse.trim(), gradeLevel: regLevel.trim(), university: regUni.trim(), profilePic: null };
+    setCurrentUser(regName.trim()); setUserProfile(r); setResearchers(prev => [...prev, r]);
+    setRegName(''); setRegId(''); setRegCourse(''); setRegLevel(''); setRegUni(''); setRegError('');
     setIsLoggedIn(true); navigate('explore');
   };
 
@@ -782,6 +789,7 @@ export default function App() {
                   <input type="text" value={regLevel} onChange={e => setRegLevel(e.target.value)} placeholder="Grade Level" className={inputCls} />
                   <input type="text" value={regUni} onChange={e => setRegUni(e.target.value)} placeholder="University" className={`${inputCls} sm:col-span-2`} />
                   <input type="email" placeholder="Valid Email" className={`${inputCls} sm:col-span-2`} />
+                  {regError && <p className="sm:col-span-2 text-red-400 text-xs font-bold uppercase tracking-widest text-center -mt-1">{regError}</p>}
                   <button type="button" onClick={handleCompleteRegistration} className="sm:col-span-2 py-4 sm:py-5 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-[0.98]">Complete Registration</button>
                 </form>
               </div>
